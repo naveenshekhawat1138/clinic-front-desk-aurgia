@@ -49,6 +49,17 @@ All endpoints below require an active session (log in first) except auth endpoin
 | POST | `/api/appointments` | Book an appointment. Body: `{doctor_id, patient_name, patient_phone, start_time (ISO), duration_minutes}`. Returns `409` if the doctor already has an overlapping appointment. |
 | POST | `/api/appointments/<id>/cancel` | Cancel an appointment. Applies a late fee if cancelled less than 24 hours before the start time. |
 | GET  | `/api/appointments/search?patient=&page=&per_page=&sort=&order=` | Find appointments by patient name (partial match) |
+| POST | `/api/appointments/<id>/reschedule` | Move a *booked* appointment to a new time. Body: `{start_time (ISO), duration_minutes (optional, keeps original length if omitted)}`. Same doctor and patient are kept; re-checks for conflicts and returns `409` if the new time overlaps another booked appointment. |
+| POST | `/api/appointments/<id>/complete` | Mark a *booked* appointment as completed (front desk confirms the patient was seen). This is what prevents the no-show job from later marking it. |
+| POST | `/clock` | **Not behind login** — simulated clock for testing/grading. Body: one of `{"now": "ISO datetime"}`, `{"advance_minutes": N}`, `{"advance_seconds": N}`. Setting/advancing the clock immediately runs due jobs (see below) and returns `{"current_time": ...}`. Before this is ever called, the app just uses real time. |
+| GET  | `/outbox` | **Not behind login.** Returns every notification the mock Notification Service has "sent" so far, as JSON — this is where the morning appointment reminders land instead of an actual SMS/email provider. |
+
+## Time-based jobs (T1, T2, T6 twists)
+
+- **Reschedule (T6):** `POST /api/appointments/<id>/reschedule` re-runs the same overlap check used at booking time, excluding the appointment being moved, so a reschedule can never create a double-booking.
+- **Morning reminders (T1):** every time `POST /clock` moves time forward, the app checks every *booked* appointment whose date matches the (simulated) current date and that hasn't been reminded yet, and adds one entry to the `/outbox` for each. Each appointment is only reminded once (tracked with an internal `reminded` flag) unless it's rescheduled to a different day, in which case it becomes eligible for a reminder again.
+- **Auto no-show (T2):** also runs on every `POST /clock` call. Any appointment still `booked` more than 30 minutes (`NO_SHOW_GRACE_MINUTES` in `app.py`) after its start time gets automatically marked `no_show`. Marking an appointment `completed` (via `POST /api/appointments/<id>/complete`) before that window closes prevents it.
+- **Why `/clock` and `/outbox` aren't behind login:** they represent the scheduler/grading harness driving the system forward, not a front-desk staff action, so they're intentionally separate from the `/api/` + session-auth surface the UI uses.
 
 ## Core rules implemented
 

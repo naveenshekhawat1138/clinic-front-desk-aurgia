@@ -32,7 +32,13 @@ function renderAppointmentsTable(container, items, { showCancel } = { showCancel
         ${a.status === 'cancelled' && a.late_fee_applied ? `<span class="badge fee">late fee: ${a.fee_amount}</span>` : ''}
         ${a.status === 'cancelled' && !a.late_fee_applied ? `<span class="badge ok">no fee</span>` : ''}
       </td>
-      <td>${showCancel && a.status === 'booked' ? `<button class="btn btn-small cancel-btn" data-id="${a.id}">Cancel</button>` : ''}</td>
+      <td class="actions">
+        ${a.status === 'booked' ? `
+          <button class="btn btn-small reschedule-btn" data-id="${a.id}">Reschedule</button>
+          <button class="btn btn-small complete-btn" data-id="${a.id}">Complete</button>
+          ${showCancel ? `<button class="btn btn-small cancel-btn" data-id="${a.id}">Cancel</button>` : ''}
+        ` : ''}
+      </td>
     </tr>`).join('');
 
   container.innerHTML = `
@@ -41,21 +47,39 @@ function renderAppointmentsTable(container, items, { showCancel } = { showCancel
       <tbody>${rows}</tbody>
     </table>`;
 
+  const reloadOwningPanel = () => {
+    if (container.id === 'd-results') loadDoctorDay();
+    if (container.id === 's-results') runSearch();
+  };
+
   container.querySelectorAll('.cancel-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Cancel this appointment?')) return;
-      const id = btn.dataset.id;
-      const { ok, data } = await postJSON(`/api/appointments/${id}/cancel`, {});
+      const { ok, data } = await postJSON(`/api/appointments/${btn.dataset.id}/cancel`, {});
       if (ok) {
         alert(data.late_fee_applied
           ? `Cancelled. Late cancellation fee applied: ${data.fee_amount}`
           : 'Cancelled. No fee (cancelled in good time).');
-        // reload whichever panel this row belongs to
-        if (document.getElementById('d-results').contains(container) || container.id === 'd-results') loadDoctorDay();
-        if (document.getElementById('s-results').contains(container) || container.id === 's-results') runSearch();
+        reloadOwningPanel();
       } else {
         alert(data.error || 'Could not cancel.');
       }
+    });
+  });
+
+  container.querySelectorAll('.complete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const { ok, data } = await postJSON(`/api/appointments/${btn.dataset.id}/complete`, {});
+      if (ok) { reloadOwningPanel(); } else { alert(data.error || 'Could not mark complete.'); }
+    });
+  });
+
+  container.querySelectorAll('.reschedule-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const newStart = prompt('New start time (YYYY-MM-DDTHH:MM), e.g. 2026-10-01T14:30');
+      if (!newStart) return;
+      const { ok, data } = await postJSON(`/api/appointments/${btn.dataset.id}/reschedule`, { start_time: newStart });
+      if (ok) { reloadOwningPanel(); } else { alert(data.error || 'Could not reschedule.'); }
     });
   });
 }
@@ -115,7 +139,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const sLoad = document.getElementById('s-load');
   if (sLoad) sLoad.addEventListener('click', () => runSearch(1));
+
+  const clockSetBtn = document.getElementById('clock-set-btn');
+  if (clockSetBtn) {
+    clockSetBtn.addEventListener('click', async () => {
+      const val = document.getElementById('clock-set').value;
+      if (!val) return;
+      const { data } = await postJSON('/clock', { now: val });
+      updateClockDisplay(data.current_time);
+      loadOutbox();
+      loadDoctorDay();
+    });
+  }
+  const clockAdvanceBtn = document.getElementById('clock-advance-btn');
+  if (clockAdvanceBtn) {
+    clockAdvanceBtn.addEventListener('click', async () => {
+      const { data } = await postJSON('/clock', { advance_minutes: 45 });
+      updateClockDisplay(data.current_time);
+      loadOutbox();
+      loadDoctorDay();
+    });
+  }
+  const outboxRefreshBtn = document.getElementById('outbox-refresh-btn');
+  if (outboxRefreshBtn) outboxRefreshBtn.addEventListener('click', loadOutbox);
+  if (document.getElementById('outbox-results')) loadOutbox();
 });
+
+function updateClockDisplay(iso) {
+  const el = document.getElementById('clock-display');
+  if (el) el.textContent = iso ? fmt(iso) : 'real time (not overridden yet)';
+}
+
+async function loadOutbox() {
+  const container = document.getElementById('outbox-results');
+  if (!container) return;
+  const { data } = await getJSON('/outbox');
+  if (!data.length) {
+    container.innerHTML = '<p class="muted">No notifications sent yet.</p>';
+    return;
+  }
+  container.innerHTML = `
+    <table class="table">
+      <thead><tr><th>Patient</th><th>Message</th><th>Sent at</th></tr></thead>
+      <tbody>${data.map(n => `<tr><td>${n.patient_name}</td><td>${n.message}</td><td>${fmt(n.created_at)}</td></tr>`).join('')}</tbody>
+    </table>`;
+}
 
 let dCurrentPage = 1;
 async function loadDoctorDay(page) {

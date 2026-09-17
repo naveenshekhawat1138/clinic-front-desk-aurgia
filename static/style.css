@@ -66,6 +66,9 @@ body {
 .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; }
 .badge.booked { background: #e0edff; color: var(--primary); }
 .badge.cancelled { background: #fde2e1; color: var(--danger); }
+.badge.completed { background: #dcfce7; color: var(--ok); }
+.badge.no_show { background: #fef3c7; color: #b45309; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .badge.fee { background: #fde2e1; color: var(--danger); margin-left: 4px; }
 .badge.ok { background: #dcfce7; color: var(--ok); margin-left: 4px; }
 

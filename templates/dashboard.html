@@ -56,5 +56,21 @@
   <div id="s-pagination" class="pagination"></div>
 </section>
 
+<section class="panel">
+  <h2>Time & notifications (testing)</h2>
+  <p class="muted">
+    The clinic's clock can be fast-forwarded for testing — this is what triggers
+    morning reminders and auto no-show marking, instead of waiting real hours.
+  </p>
+  <div class="toolbar">
+    <span>Current time: <strong id="clock-display">—</strong></span>
+    <label>Set time <input type="datetime-local" id="clock-set"></label>
+    <button class="btn btn-outline" id="clock-set-btn">Set</button>
+    <button class="btn btn-outline" id="clock-advance-btn">Advance 45 min</button>
+    <button class="btn btn-outline" id="outbox-refresh-btn">Refresh outbox</button>
+  </div>
+  <div id="outbox-results"></div>
+</section>
+
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 {% endblock %}

@@ -50,11 +50,14 @@ class Appointment(db.Model):
     patient_id = db.Column(db.Integer, db.ForeignKey("patient.id"), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="booked")  # booked | cancelled
+    # booked | cancelled | completed | no_show
+    status = db.Column(db.String(20), nullable=False, default="booked")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     cancelled_at = db.Column(db.DateTime, nullable=True)
     late_fee_applied = db.Column(db.Boolean, default=False)
     fee_amount = db.Column(db.Float, default=0.0)
+    # whether the "today's appointment" reminder has already been sent
+    reminded = db.Column(db.Boolean, default=False)
 
     doctor = db.relationship("Doctor")
     patient = db.relationship("Patient")
@@ -73,6 +76,31 @@ class Appointment(db.Model):
             "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None,
             "late_fee_applied": self.late_fee_applied,
             "fee_amount": self.fee_amount,
+            "reminded": self.reminded,
+        }
+
+
+class Notification(db.Model):
+    """The 'outbox' — a stand-in for a real Notification Service."""
+    id = db.Column(db.Integer, primary_key=True)
+    appointment_id = db.Column(db.Integer, db.ForeignKey("appointment.id"), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey("patient.id"), nullable=False)
+    kind = db.Column(db.String(30), nullable=False)  # e.g. "appointment_reminder"
+    message = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False)  # simulated-clock time it was "sent" at
+
+    appointment = db.relationship("Appointment")
+    patient = db.relationship("Patient")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "appointment_id": self.appointment_id,
+            "patient_id": self.patient_id,
+            "patient_name": self.patient.name if self.patient else None,
+            "kind": self.kind,
+            "message": self.message,
+            "created_at": self.created_at.isoformat(),
         }
 
 

@@ -5,7 +5,7 @@ from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 
 from models import (
-    db, User, Doctor, Patient, Appointment,
+    db, User, Doctor, Patient, Appointment, Notification,
     has_conflict, CANCELLATION_WINDOW_HOURS, LATE_CANCELLATION_FEE,
 )
 
@@ -17,6 +17,66 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
 db.init_app(app)
+
+# --- Simulated clock -------------------------------------------------------
+# By default the app uses real wall-clock time. A grading harness (or anyone
+# testing time-based behaviour, like the no-show job or morning reminders)
+# can call POST /clock to move time forward without waiting for real hours
+# to pass. Every place in this app that needs "now" calls now() below instead
+# of datetime.utcnow() directly, so the whole app respects the simulated time
+# once it's been set.
+_simulated_now = None  # None = use real time
+
+
+def now():
+    return _simulated_now if _simulated_now is not None else datetime.utcnow()
+
+
+NO_SHOW_GRACE_MINUTES = 30  # mark a booked appointment as no-show this long after it started
+
+
+def run_due_jobs():
+    """
+    Runs whenever the clock moves forward (see POST /clock below).
+    1) Sends a "today's appointment" reminder (into the /outbox) for any
+       booked appointment whose day has arrived and hasn't been reminded yet.
+    2) Marks any booked appointment as "no_show" if it's more than
+       NO_SHOW_GRACE_MINUTES past its start time and was never completed.
+    """
+    current = now()
+    today_start = datetime(current.year, current.month, current.day)
+    today_end = today_start + timedelta(days=1)
+
+    # 1) Morning reminders for today's appointments
+    due_for_reminder = Appointment.query.filter(
+        Appointment.status == "booked",
+        Appointment.reminded.is_(False),
+        Appointment.start_time >= today_start,
+        Appointment.start_time < today_end,
+    ).all()
+    for appt in due_for_reminder:
+        db.session.add(Notification(
+            appointment_id=appt.id,
+            patient_id=appt.patient_id,
+            kind="appointment_reminder",
+            message=(
+                f"Reminder: you have an appointment with {appt.doctor.name} "
+                f"today at {appt.start_time.strftime('%H:%M')}."
+            ),
+            created_at=current,
+        ))
+        appt.reminded = True
+
+    # 2) Auto no-show marking
+    no_show_cutoff = current - timedelta(minutes=NO_SHOW_GRACE_MINUTES)
+    overdue = Appointment.query.filter(
+        Appointment.status == "booked",
+        Appointment.start_time <= no_show_cutoff,
+    ).all()
+    for appt in overdue:
+        appt.status = "no_show"
+
+    db.session.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -241,16 +301,71 @@ def api_cancel_appointment(appt_id):
     if appt.status == "cancelled":
         return jsonify({"error": "appointment is already cancelled"}), 409
 
-    now = datetime.utcnow()
-    hours_before = (appt.start_time - now).total_seconds() / 3600.0
+    current = now()
+    hours_before = (appt.start_time - current).total_seconds() / 3600.0
     is_late = hours_before < CANCELLATION_WINDOW_HOURS
 
     appt.status = "cancelled"
-    appt.cancelled_at = now
+    appt.cancelled_at = current
     appt.late_fee_applied = is_late
     appt.fee_amount = LATE_CANCELLATION_FEE if is_late else 0.0
     db.session.commit()
 
+    return jsonify(appt.to_dict())
+
+
+@app.route("/api/appointments/<int:appt_id>/reschedule", methods=["POST"])
+@login_required
+def api_reschedule_appointment(appt_id):
+    """
+    Lifecycle twist: move a booked appointment to a new time. Same doctor,
+    same patient — only the time changes, and it must stay conflict-free.
+    """
+    appt = Appointment.query.get(appt_id)
+    if not appt:
+        return jsonify({"error": "appointment not found"}), 404
+    if appt.status != "booked":
+        return jsonify({"error": f"cannot reschedule an appointment with status '{appt.status}'"}), 409
+
+    data = request.get_json(force=True)
+    start_str = data.get("start_time")
+    if not start_str:
+        return jsonify({"error": "start_time is required"}), 400
+    try:
+        new_start = datetime.fromisoformat(start_str)
+    except ValueError:
+        return jsonify({"error": "start_time must be ISO format, e.g. 2026-09-20T10:00"}), 400
+
+    duration_minutes = data.get("duration_minutes")
+    if duration_minutes is not None:
+        new_end = new_start + timedelta(minutes=int(duration_minutes))
+    else:
+        new_end = new_start + (appt.end_time - appt.start_time)  # keep original length
+
+    # Re-check overlap against every OTHER booked appointment for this doctor.
+    if has_conflict(appt.doctor_id, new_start, new_end, exclude_id=appt.id):
+        return jsonify({
+            "error": "This doctor already has an appointment that overlaps the new time slot."
+        }), 409
+
+    appt.start_time = new_start
+    appt.end_time = new_end
+    appt.reminded = False  # if it moved to a different day, it should be reminded again
+    db.session.commit()
+    return jsonify(appt.to_dict())
+
+
+@app.route("/api/appointments/<int:appt_id>/complete", methods=["POST"])
+@login_required
+def api_complete_appointment(appt_id):
+    """Front desk marks a patient as seen — this is what stops the no-show job from firing."""
+    appt = Appointment.query.get(appt_id)
+    if not appt:
+        return jsonify({"error": "appointment not found"}), 404
+    if appt.status != "booked":
+        return jsonify({"error": f"cannot complete an appointment with status '{appt.status}'"}), 409
+    appt.status = "completed"
+    db.session.commit()
     return jsonify(appt.to_dict())
 
 
@@ -282,6 +397,50 @@ def api_search_appointments():
         "total": paged.total,
         "pages": paged.pages,
     })
+
+
+# ---------------------------------------------------------------------------
+# System endpoints for the grading harness: simulated clock + notification outbox.
+# Not behind login — these represent the harness/scheduler poking the system,
+# not a front-desk staff action.
+# ---------------------------------------------------------------------------
+@app.route("/clock", methods=["POST"])
+def set_clock():
+    """
+    Advance or set the simulated 'now', then run whatever jobs are due
+    (morning reminders, auto no-show marking).
+
+    Body accepts ONE of:
+      {"now": "2026-09-20T08:00:00"}   -> set the simulated time to this instant
+      {"advance_minutes": 45}           -> move forward by N minutes from current time
+      {"advance_seconds": 1800}         -> move forward by N seconds from current time
+    """
+    global _simulated_now
+    data = request.get_json(silent=True) or {}
+
+    if "now" in data:
+        try:
+            _simulated_now = datetime.fromisoformat(data["now"])
+        except (ValueError, TypeError):
+            return jsonify({"error": "now must be an ISO datetime string"}), 400
+    elif "advance_minutes" in data:
+        _simulated_now = now() + timedelta(minutes=float(data["advance_minutes"]))
+    elif "advance_seconds" in data:
+        _simulated_now = now() + timedelta(seconds=float(data["advance_seconds"]))
+    else:
+        return jsonify({
+            "error": "provide one of: now (ISO datetime), advance_minutes, advance_seconds"
+        }), 400
+
+    run_due_jobs()
+    return jsonify({"current_time": now().isoformat()})
+
+
+@app.route("/outbox", methods=["GET"])
+def get_outbox():
+    """Everything the (mock) Notification Service has 'sent' so far."""
+    notifications = Notification.query.order_by(Notification.created_at).all()
+    return jsonify([n.to_dict() for n in notifications])
 
 
 with app.app_context():

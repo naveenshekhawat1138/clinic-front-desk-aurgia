@@ -1,12 +1,7 @@
-<!--
-IMPORTANT — replace this entire file before submitting.
-
-The submission requires AI_LOGS.md to contain the COMPLETE conversation with
-the AI tool, pasted as-is and unmodified. Do this before you submit:
-
-1. Export or copy this whole Claude conversation (from your first message to
-   your last), including your prompts and Claude's replies.
-2. Paste it into this file, replacing this placeholder text.
-3. Do not edit, trim, or reformat it — the instructions say any alteration
-   costs marks.
--->
+# 1. prompt:
+The storyline
+A busy clinic with a few doctors. The front desk books patients into time slots, but keeps double-booking a doctor or letting two patients grab the same slot. Patients cancel — if they cancel in good time it’s free, but a late cancellation should carry a small fee. The desk needs to see a doctor’s day, find a patient’s appointment by name, and never let two appointments for the same doctor overlap.
+Build the front desk something so no doctor is ever double-booked and late cancellations are handled fairly.
+(The desk’s frustrations are the spec — build it for any clinic. Get conflict-free booking and the cancellation rule right first, then the lookups.)
+generate a SQLite database schema that accommodates the twist, user registration, and search features.
+# 2. prompt:
