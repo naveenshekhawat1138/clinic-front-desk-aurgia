@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Clinic Front Desk — never double-book a doctor{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Clinic Front Desk</h1>
+  <p class="lead">
+    A simple booking tool built for a busy front desk juggling a few doctors,
+    a lot of walk-ins, and phones ringing off the hook.
+  </p>
+  <a class="btn" href="/register">Get started</a>
+  <a class="btn btn-outline" href="/login">Log in</a>
+</section>
+
+<section class="features">
+  <h2>What it does</h2>
+  <ul>
+    <li><strong>Conflict-free booking.</strong> The system checks every doctor's schedule before confirming a slot, so two patients can never be booked into the same doctor at the same time.</li>
+    <li><strong>Fair cancellations.</strong> Cancel in good time and it's free. Cancel late (inside the {{ '' }}24-hour window) and a small fee is applied automatically — no arguing at the counter.</li>
+    <li><strong>A doctor's whole day, at a glance.</strong> Pick a doctor and a date to see every booked slot in order.</li>
+    <li><strong>Find a patient fast.</strong> Search appointments by patient name instead of scrolling a paper diary.</li>
+  </ul>
+</section>
+
+<section class="audience">
+  <h2>Who it's for</h2>
+  <p>Small and mid-sized clinics — a handful of doctors, one or two front-desk staff, and a steady stream of
+     walk-ins and phone bookings — where a shared paper diary or spreadsheet has started causing real double-bookings.</p>
+</section>
+
+<section class="roadmap">
+  <h2>What we'd build next</h2>
+  <ol>
+    <li>SMS/WhatsApp reminders the day before an appointment, to cut down on late cancellations and no-shows.</li>
+    <li>Per-doctor working hours and holiday calendars, so the system also blocks bookings outside a doctor's actual availability.</li>
+    <li>A basic analytics view for the clinic manager: no-show rate, late-cancellation revenue, busiest doctor/day.</li>
+  </ol>
+</section>
+{% endblock %}

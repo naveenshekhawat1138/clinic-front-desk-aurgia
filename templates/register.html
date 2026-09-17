@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<section class="auth-form">
+  <h1>Create a front-desk account</h1>
+  <form id="register-form">
+    <label>Email <input type="email" id="email" required></label>
+    <label>Password <input type="password" id="password" required minlength="6"></label>
+    <button class="btn" type="submit">Register</button>
+  </form>
+  <p id="msg" class="msg"></p>
+  <p>Already have an account? <a href="/login">Log in</a></p>
+</section>
+
+<script>
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const res = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email, password})
+  });
+  const data = await res.json();
+  const msg = document.getElementById('msg');
+  if (res.ok) {
+    msg.textContent = 'Account created. You can log in now.';
+    msg.className = 'msg ok';
+    setTimeout(() => window.location.href = '/login', 800);
+  } else {
+    msg.textContent = data.error || 'Something went wrong.';
+    msg.className = 'msg error';
+  }
+});
+</script>
+{% endblock %}

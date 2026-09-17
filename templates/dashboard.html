@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<section class="panel">
+  <h2>Book an appointment</h2>
+  <form id="book-form" class="grid-form">
+    <label>Doctor
+      <select id="b-doctor" required></select>
+    </label>
+    <label>Patient name
+      <input type="text" id="b-patient-name" required>
+    </label>
+    <label>Patient phone
+      <input type="text" id="b-patient-phone">
+    </label>
+    <label>Start time
+      <input type="datetime-local" id="b-start" required>
+    </label>
+    <label>Duration (minutes)
+      <input type="number" id="b-duration" value="30" min="5" step="5" required>
+    </label>
+    <button class="btn" type="submit">Book</button>
+  </form>
+  <p id="book-msg" class="msg"></p>
+</section>
+
+<section class="panel">
+  <h2>Doctor's day</h2>
+  <div class="toolbar">
+    <label>Doctor
+      <select id="d-doctor"></select>
+    </label>
+    <label>Date
+      <input type="date" id="d-date">
+    </label>
+    <label>Sort
+      <select id="d-sort">
+        <option value="start_time">Start time</option>
+        <option value="status">Status</option>
+      </select>
+    </label>
+    <button class="btn btn-outline" id="d-load">Load</button>
+  </div>
+  <div id="d-results"></div>
+  <div id="d-pagination" class="pagination"></div>
+</section>
+
+<section class="panel">
+  <h2>Find a patient's appointment</h2>
+  <div class="toolbar">
+    <input type="text" id="s-name" placeholder="Patient name">
+    <button class="btn btn-outline" id="s-load">Search</button>
+  </div>
+  <div id="s-results"></div>
+  <div id="s-pagination" class="pagination"></div>
+</section>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}
