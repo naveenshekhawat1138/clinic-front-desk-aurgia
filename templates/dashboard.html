@@ -27,6 +27,7 @@
 
 <section class="panel">
   <h2>Doctor's day</h2>
+  <p class="muted">Pick a doctor and a date to see every booked slot in order.</p>
   <div class="toolbar">
     <label>Doctor
       <select id="d-doctor"></select>
@@ -49,7 +50,9 @@
 <section class="panel">
   <h2>Find a patient's appointment</h2>
   <div class="toolbar">
-    <input type="text" id="s-name" placeholder="Patient name">
+    <label>Patient name
+      <input type="text" id="s-name" placeholder="e.g. Priya Sharma">
+    </label>
     <button class="btn btn-outline" id="s-load">Search</button>
   </div>
   <div id="s-results"></div>
@@ -57,7 +60,7 @@
 </section>
 
 <section class="panel">
-  <h2>Time & notifications (testing)</h2>
+  <h2>Time &amp; notifications (testing)</h2>
   <p class="muted">
     The clinic's clock can be fast-forwarded for testing — this is what triggers
     morning reminders and auto no-show marking, instead of waiting real hours.

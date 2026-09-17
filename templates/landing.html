@@ -2,20 +2,45 @@
 {% block title %}Clinic Front Desk — never double-book a doctor{% endblock %}
 {% block content %}
 <section class="hero">
-  <h1>Clinic Front Desk</h1>
-  <p class="lead">
-    A simple booking tool built for a busy front desk juggling a few doctors,
-    a lot of walk-ins, and phones ringing off the hook.
-  </p>
-  <a class="btn" href="/register">Get started</a>
-  <a class="btn btn-outline" href="/login">Log in</a>
+  <div>
+    <h1>Clinic Front Desk</h1>
+    <p class="lead">
+      A simple booking tool built for a busy front desk juggling a few doctors,
+      a lot of walk-ins, and phones ringing off the hook.
+    </p>
+    <div class="cta-row">
+      <a class="btn" href="/register">Get started</a>
+      <a class="btn btn-outline" href="/login">Log in</a>
+    </div>
+  </div>
+
+  <div class="day-strip" aria-hidden="true">
+    <div class="day-strip-label">Dr. Patel — Tuesday</div>
+    <div class="slot">
+      <time>9:00</time>
+      <div class="bar w1"></div>
+    </div>
+    <div class="slot">
+      <time>9:30</time>
+      <div class="bar w2"></div>
+    </div>
+    <div class="slot blocked">
+      <time>10:15</time>
+      <div class="bar w1"></div>
+      <span class="note">slot taken</span>
+    </div>
+    <div class="slot">
+      <time>11:00</time>
+      <div class="bar w3"></div>
+    </div>
+  </div>
 </section>
 
 <section class="features">
   <h2>What it does</h2>
   <ul>
     <li><strong>Conflict-free booking.</strong> The system checks every doctor's schedule before confirming a slot, so two patients can never be booked into the same doctor at the same time.</li>
-    <li><strong>Fair cancellations.</strong> Cancel in good time and it's free. Cancel late (inside the {{ '' }}24-hour window) and a small fee is applied automatically — no arguing at the counter.</li>
+    <li><strong>Fair cancellations.</strong> Cancel in good time and it's free. Cancel late (inside the 24-hour window) and a small fee is applied automatically — no arguing at the counter.</li>
     <li><strong>A doctor's whole day, at a glance.</strong> Pick a doctor and a date to see every booked slot in order.</li>
     <li><strong>Find a patient fast.</strong> Search appointments by patient name instead of scrolling a paper diary.</li>
   </ul>
