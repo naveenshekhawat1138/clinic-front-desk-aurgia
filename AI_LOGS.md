@@ -7,7 +7,9 @@ Build the front desk something so no doctor is ever double-booked and late cance
 generate a SQLite database schema that accommodates the twist, user registration, and search features.
 # 2. prompt:
  Write the initialization script to create tables for users and your core problem entity.
- # 3.prompt:
+ # 3. prompt: 
+ give the structural pipeline to create this project. in detail.
+ # 4.prompt:
  Act as an expert backend developer. I need you to implement the REST APIs for an Express.js and SQLite3 application. Follow these instructions precisely:
 
 1. Create a registration endpoint (POST /api/register) and a login endpoint (POST /api/login). Use bcryptjs to securely hash passwords and jsonwebtoken (JWT) to return a signed token upon successful login.
@@ -20,7 +22,7 @@ generate a SQLite database schema that accommodates the twist, user registration
 5. Provide a GET /api/doctors endpoint to fetch the master list of seeded doctors.
 
 Provide the complete, production-ready server.js and database.js code blocks without leaving out any logic.
-# 4. prompt:
+# 5. prompt:
 Act as an expert frontend engineer. I need a single-file user interface (index.html) built with vanilla HTML5, JavaScript, and styled beautifully using Tailwind CSS via CDN. The file must contain three distinct logical views:
 
 1. Mandatory Product Landing Page: A highly prominent, clean hero area explaining what the product is (MediSched), its target audience (clinic front-desk staff), how it helps eliminate scheduling chaos, and a designated section listing 3 future roadmap features (Automated SMS reminders, AI waitlist clearing, and multi-resource tracking).
@@ -33,17 +35,17 @@ Act as an expert frontend engineer. I need a single-file user interface (index.h
 
 Write the frontend JavaScript using the native Fetch API to communicate cleanly with the backend endpoints on localhost:3000. Ensure error messages (like double-booking alerts) are visually popped up using clean alert messages or UI alerts. Provide the full code.
 
-# 5. prompt: 
-provide with the commands to execute it in github codespace,
 # 6. prompt: 
+provide with the commands to execute it in github codespace,
+# 7. prompt: 
 Twists for this problem
 Level 1 — T6 (lifecycle): “Reschedule an appointment to a new time; it must stay conflict-free (re-check overlap) and keep the same patient and doctor.”
 Level 2 — T1 (integrate): “Each morning, remind patients of today’s appointments via the Notification Service.” Graded via /outbox after POST /clock.
 Level 3 — T2 (automation): “A job auto-marks appointments as no-show 30 min after their start if not completed.” Graded via POST /clock.
  update these problems.
- # 7. prompt:
+ # 8. prompt:
  give the commands to update the repository.
-# 8. prompt:
-redesign the frontend to make it look more visually appealing.
 # 9. prompt:
+redesign the frontend to make it look more visually appealing.
+# 10. prompt:
 command to update it on github.
