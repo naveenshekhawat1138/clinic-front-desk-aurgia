@@ -1,3 +1,4 @@
+## AI tool used: Claude.
 # 1. prompt:
 The storyline
 A busy clinic with a few doctors. The front desk books patients into time slots, but keeps double-booking a doctor or letting two patients grab the same slot. Patients cancel — if they cancel in good time it’s free, but a late cancellation should carry a small fee. The desk needs to see a doctor’s day, find a patient’s appointment by name, and never let two appointments for the same doctor overlap.
@@ -42,3 +43,7 @@ Level 3 — T2 (automation): “A job auto-marks appointments as no-show 30 min 
  update these problems.
  # 7. prompt:
  give the commands to update the repository.
+# 8. prompt:
+redesign the frontend to make it look more visually appealing.
+# 9. prompt:
+command to update it on github.
