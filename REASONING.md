@@ -1,68 +1,26 @@
-# Reasoning
+## The Priority Order
+I followed the project brief exactly as instructed. I focused on building the most critical business features first before moving on to the extra tools.
+First: I built the core booking engine with a conflict checker.
+Second: I added the logic for cancellation fees.
+Last: I built the search, filter, and pagination features.
+## The Doctor Overlap Rule:
+To prevent double-booking a doctor, I used a specific mathematical rule. Two appointments overlap if one starts before the other ends, AND it ends after the other starts. If those two conditions are true, their time ranges cross, and the booking is blocked.
+## The Cancellation Fee Rule:
+This is a straightforward time check. If a patient cancels their appointment less than 24 hours before it starts, the system charges them a fee. If they cancel 24 hours or more in advance, it is completely free.
+## Automatic Patient Creation:
+To make things easier for the front desk, I made the system smart. When someone books an appointment, the system checks the patient's name and phone number. If they aren't in the database yet, the system automatically creates a new patient profile right then and there. This saves the staff from having to do a separate "add patient" step first.
+## How the UI and API Talk to Each Other:
+The web pages don't touch the database directly. Instead, the frontend uses JavaScript fetch() to talk to the JSON API endpoints (which I documented in the README). The API acts as the middleman—it handles the requests from the UI, does the actual reading and writing to the database, and sends the data back.
+##  How I Tested It:
+Instead of clicking through the website manually dozens of times, I wrote an automated script. The script automatically walks through the exact scenarios from the project brief:
+1. It books a slot.
+2. It tries to double-book that same slot (and verifies that it fails).
+3. It books a non-overlapping slot (and verifies that it works).
+4. It tests searching and viewing a doctor's daily schedule.
+5. It tests cancelling early (free) versus cancelling late (fee).
 
-## Priority order
-The brief said to get conflict-free booking and the cancellation rule right first,
-then the lookups. I built and tested in that order: booking + overlap check first,
-then cancellation fee logic, then doctor-day view, search, pagination/sorting, and
-the landing page last.
-
-## Key design decisions
-
-**Stack:** Flask + SQLite + Flask-SQLAlchemy. Chose this for a fast setup in a
-timed round — no build step, minimal dependencies, SQLite needs no separate server.
-
-**Overlap rule:** Two time ranges overlap if `existing.start < new.end AND
-existing.end > new.start`. I only check against appointments with
-`status == 'booked'` (cancelled ones don't block a slot). The check runs once
-before creating the row and once again right before commit, to shrink the window
-where two near-simultaneous requests could both pass the first check.
-
-**Cancellation fee:** A cancellation counts as "late" if it happens less than
-24 hours before the appointment's start time. Late cancellations get a flat fee
-(`LATE_CANCELLATION_FEE` in `models.py`); on-time cancellations get none. This is
-computed and stored at cancel-time, not derived later, so the history stays
-accurate even as time passes.
-
-**Patients found-or-created by name+phone:** the brief didn't require a separate
-"add patient" step, so a booking auto-creates the patient record if one with
-that name and phone doesn't already exist. Lets the front desk book in one step.
-
-**UI over the API:** the dashboard is a thin HTML shell; all real data (doctor
-list, day view, search results, booking, cancelling) goes through the JSON API
-listed in the README via `fetch()` in `static/app.js`, rather than the UI talking
-to the database directly.
-
-## How I tested it
-
-I wrote a small script that drives the Flask app through its test client (no
-browser needed) and walked through the exact scenarios from the brief:
-
-1. Register + log in a front-desk user.
-2. Book doctor A at 10:00–10:30 → should succeed.
-3. Book the same doctor at 10:15–10:45 (overlaps) → should be rejected with 409.
-4. Book the same doctor at 10:30–11:00 (back-to-back, no overlap) → should succeed.
-5. Search appointments by patient name → returns the right appointment.
-6. Load a doctor's day for that date → returns both booked appointments.
-7. Cancel an appointment far in the future → should be free (`late_fee_applied: false`).
-8. Book an appointment starting in ~1 hour, then cancel it → should get the late fee.
-
-## Bug I hit and fixed
-
-My first version of the booking route re-checked for conflicts a second time
-right before `commit()`, as an extra safety net against race conditions. That
-second check kept failing on the very first booking, even into an empty table.
-
-Looking at it, the cause was: `db.session.add(appt)` puts the new appointment
-into the SQLAlchemy session, and SQLAlchemy auto-flushes pending changes before
-running a query — so by the time the second `has_conflict()` check ran, the new
-row had already been flushed to the database and was overlapping *with itself*.
-
-Fix: call `db.session.flush()` explicitly right after `add()` to get the new
-row's id, then pass `exclude_id=appt.id` into the second conflict check so it
-ignores the row it's about to commit. Re-ran the test script afterward and all
-cases passed.
-
-## What I'd improve with more time
-- Move from a flat late-cancellation fee to a percentage of the appointment's cost.
-- Add per-doctor working hours so bookings outside them are rejected too.
-- Use a proper migration tool (e.g. Alembic) instead of `db.create_all()`.
+## The Big Bug I Fixed:
+I ran into a really interesting bug in my first version of the booking system. As a safety net, I was checking for scheduling conflicts twice: once right before creating the appointment, and a second time right before saving it to the database.
+But the second check kept failing on the very first booking, even though the database was completely empty!
+The issue: The code had already added the new appointment to the active database session. When the second check ran, it looked at the session, saw the appointment, and compared the new appointment against itself. It flagged it as a duplicate conflict.
+ The fix: I fixed it by explicitly saving the row first so it could get a unique ID. Then, I updated the conflict checker to ignore any appointment that matched that specific ID.
